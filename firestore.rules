@@ -1,0 +1,34 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Role-based access control functions
+    function esAutenticado() {
+      return request.auth != null;
+    }
+    
+    function getRolDeUsuario() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol;
+    }
+    
+    function esCISO() {
+      return esAutenticado() && getRolDeUsuario() == 'CISO';
+    }
+    
+    function esSOC() {
+      return esAutenticado() && (getRolDeUsuario() == 'SOC_Analyst' || getRolDeUsuario() == 'SOC_Manager');
+    }
+
+    match /logs/{document=**} {
+      // SOC y CISO pueden leer los logs de MAS
+      allow read: if esSOC() || esCISO();
+      // Solo el backend (Admin SDK) puede escribir logs, no clientes web.
+      allow write: if false; 
+    }
+    
+    match /usuarios/{userId} {
+      // Usuarios solo pueden leer sus propios datos, CISO puede leer todos
+      allow read: if esAutenticado() && (request.auth.uid == userId || esCISO());
+      allow write: if false; // Solo Admin SDK o Funciones cambian roles
+    }
+  }
+}

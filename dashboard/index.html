@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incident Responder Dashboard - MAS Logs</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <!-- Babel para JSX en el navegador -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen p-8 font-sans">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function Dashboard() {
+            const [logs, setLogs] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [filter, setFilter] = useState('all');
+
+            useEffect(() => {
+                fetch('../logs.json')
+                    .then(res => res.json())
+                    .then(data => {
+                        setLogs(data);
+                        setLoading(false);
+                    })
+                    .catch(err => {
+                        console.error('Error cargando logs:', err);
+                        setLoading(false);
+                    });
+            }, []);
+
+            if (loading) {
+                return <div className="text-center text-xl mt-20">Cargando 600+ eventos...</div>;
+            }
+
+            // Estadísticas rápidas
+            const total = logs.length;
+            const compromises = logs.filter(l => l.event_type === 'compromise' || (l.action && l.action.includes('compromise'))).length;
+            const suspicious = logs.filter(l => l.event_type === 'suspicious' || (l.action && l.action.includes('suspicious'))).length;
+
+            const filteredLogs = logs.filter(log => {
+                if (filter === 'all') return true;
+                if (filter === 'critical') return log.event_type === 'critical' || log.event_type === 'compromise';
+                return log.event_type === filter;
+            });
+
+            return (
+                <div className="max-w-6xl mx-auto">
+                    <header className="flex justify-between items-center border-b border-gray-700 pb-4 mb-8">
+                        <div>
+                            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-500">
+                                🛡️ Incident Responder AI 2.0 Logs
+                            </h1>
+                            <p className="text-gray-400 mt-2">MAS Simulation Dashboard (Local JSON Preview)</p>
+                        </div>
+                        <div className="flex gap-4">
+                            <div className="bg-gray-800 p-3 rounded-lg text-center border border-gray-700">
+                                <span className="block text-2xl font-bold text-blue-400">{total}</span>
+                                <span className="text-xs text-gray-500 uppercase">Eventos</span>
+                            </div>
+                            <div className="bg-gray-800 p-3 rounded-lg text-center border border-yellow-800">
+                                <span className="block text-2xl font-bold text-yellow-400">{suspicious}</span>
+                                <span className="text-xs text-gray-500 uppercase">Sospechosos</span>
+                            </div>
+                            <div className="bg-gray-800 p-3 rounded-lg text-center border border-red-800">
+                                <span className="block text-2xl font-bold text-red-500">{compromises}</span>
+                                <span className="text-xs text-gray-500 uppercase">Compromisos</span>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="flex gap-2 mb-6">
+                        <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-md ${filter === 'all' ? 'bg-blue-600' : 'bg-gray-800 hover:bg-gray-700'}`}>Todos</button>
+                        <button onClick={() => setFilter('info')} className={`px-4 py-2 rounded-md ${filter === 'info' ? 'bg-blue-600' : 'bg-gray-800 hover:bg-gray-700'}`}>Información</button>
+                        <button onClick={() => setFilter('suspicious')} className={`px-4 py-2 rounded-md ${filter === 'suspicious' ? 'bg-yellow-600' : 'bg-gray-800 hover:bg-gray-700'}`}>Sospechosos</button>
+                        <button onClick={() => setFilter('critical')} className={`px-4 py-2 rounded-md ${filter === 'critical' ? 'bg-red-600' : 'bg-gray-800 hover:bg-gray-700'}`}>Críticos</button>
+                    </div>
+
+                    <div className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 shadow-xl">
+                        <div className="overflow-y-auto max-h-[600px]">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-gray-900 sticky top-0 z-10 border-b border-gray-700">
+                                    <tr>
+                                        <th className="p-4 font-semibold text-gray-400">Timestamp</th>
+                                        <th className="p-4 font-semibold text-gray-400">Agente</th>
+                                        <th className="p-4 font-semibold text-gray-400">Rol</th>
+                                        <th className="p-4 font-semibold text-gray-400">Tipo</th>
+                                        <th className="p-4 font-semibold text-gray-400">Acción / Detalles</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-700">
+                                    {filteredLogs.map((log, i) => (
+                                        <tr key={i} className="hover:bg-gray-750 transition-colors">
+                                            <td className="p-4 text-gray-400 whitespace-nowrap">{log.timestamp}</td>
+                                            <td className="p-4 font-medium text-blue-300">{log.agent}</td>
+                                            <td className="p-4">
+                                                <span className="px-2 py-1 bg-gray-700 rounded-md text-xs">{log.role}</span>
+                                            </td>
+                                            <td className="p-4">
+                                                <span className={`px-2 py-1 rounded-md text-xs font-bold uppercase
+                                                    ${log.event_type === 'info' ? 'bg-blue-900/50 text-blue-400' : ''}
+                                                    ${log.event_type === 'suspicious' ? 'bg-yellow-900/50 text-yellow-500' : ''}
+                                                    ${(log.event_type === 'critical' || log.event_type === 'compromise') ? 'bg-red-900/80 text-white' : ''}
+                                                `}>
+                                                    {log.event_type || 'INFO'}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-gray-300 font-mono text-xs w-full">
+                                                <strong className="text-white bg-gray-900 px-1 rounded mr-2">{log.action}</strong> 
+                                                <span className="opacity-80 break-words">{log.details}</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {filteredLogs.length === 0 && (
+                                <div className="text-center p-8 text-gray-500">No hay logs bajo este filtro.</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Dashboard />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+groq
+google-generativeai
+firebase-admin
+requests
+python-dotenv
+chromadb==0.5.0
+sentence-transformers==3.0.1
+pytest==8.3.0
+pydantic==2.7.0
+litellm==1.40.0
+google-genai
